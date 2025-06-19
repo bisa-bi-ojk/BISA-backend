@@ -34,23 +34,29 @@ export class UsersService {
 
     if (createUserDto.role === 'admin') {
       const emailVerificationToken = this.generateToken();
+      const emailVerificationExpires = new Date(Date.now() + 3600_000);
+
       const newUser: NewUser = {
         fullName: createUserDto.fullName,
         phone: createUserDto.phone,
         email: createUserDto.email,
         password: hashedPassword,
         emailVerificationToken,
+        emailVerificationExpires,
       };
       const [user] = await this.db.insert(users).values(newUser).returning();
       return user;
     } else if (createUserDto.role === 'citizen') {
       const otpCode = this.generateOtpCode();
+      const otpExpires = new Date(Date.now() + 5 * 60_000);
+
       const newUser: NewUser = {
         fullName: createUserDto.fullName,
         phone: createUserDto.phone,
         email: createUserDto.email,
         password: hashedPassword,
         otpCode,
+        otpExpires,
       };
       const [user] = await this.db.insert(users).values(newUser).returning();
       return user;
@@ -95,7 +101,11 @@ export class UsersService {
       .where(eq(users.emailVerificationToken, token))
       .limit(1);
 
-    if (!user) {
+    if (
+      !user ||
+      !user.emailVerificationExpires ||
+      user.emailVerificationExpires < new Date()
+    ) {
       return false;
     }
 
@@ -118,7 +128,7 @@ export class UsersService {
       .where(and(eq(users.email, email), eq(users.otpCode, otpCode)))
       .limit(1);
 
-    if (!user) {
+    if (!user || !user.otpExpires || user.otpExpires < new Date()) {
       return false;
     }
 
@@ -141,7 +151,7 @@ export class UsersService {
     }
 
     const resetToken = this.generateToken();
-    const resetExpires = new Date(Date.now() + 3600000); // 1 hour
+    const resetExpires = new Date(Date.now() + 3600_000);
 
     await this.db
       .update(users)
