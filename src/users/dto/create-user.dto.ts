@@ -28,4 +28,8 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   confirmPassword: string;
+
+  @IsString()
+  @IsNotEmpty()
+  role: 'admin' | 'citizen';
 }

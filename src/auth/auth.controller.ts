@@ -33,6 +33,14 @@ export class AuthController {
     return this.authService.verifyEmail(token);
   }
 
+  @Get('verify-otp')
+  async verifyOtpCode(
+    @Query('email') email: string,
+    @Query('otp') otp: string,
+  ) {
+    return this.authService.verifyOtpCode(email, otp);
+  }
+
   @Post('forgot-password')
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto);

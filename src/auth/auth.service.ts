@@ -23,12 +23,15 @@ export class AuthService {
   async register(createUserDto: CreateUserDto) {
     const user = await this.usersService.create(createUserDto);
 
-    // Send verification email
     if (user.emailVerificationToken) {
       await this.emailService.sendEmailVerification(
         user.email,
         user.emailVerificationToken,
       );
+    }
+
+    if (user.otpCode) {
+      await this.emailService.sendOtpCode(user.email, user.otpCode);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -77,6 +80,14 @@ export class AuthService {
     }
 
     return { message: 'Email verified successfully' };
+  }
+
+  async verifyOtpCode(email: string, otpCode: string) {
+    const isValid = await this.usersService.verifyOtpCode(email, otpCode);
+    if (!isValid) {
+      throw new BadRequestException('Invalid or expired OTP code');
+    }
+    return { message: 'OTP verified successfully' };
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {

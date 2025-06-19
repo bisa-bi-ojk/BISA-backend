@@ -39,6 +39,21 @@ export class EmailService {
     return this.transporter.sendMail(mailOptions);
   }
 
+  async sendOtpCode(email: string, otpCode: string) {
+    const mailOptions = {
+      from: this.configService.get('EMAIL_FROM'),
+      to: email,
+      subject: 'Your OTP Code',
+      html: `
+        <h2>One-Time Password (OTP)</h2>
+        <p>Your OTP code is: <strong>${otpCode}</strong></p>
+        <p>This code is valid for 10 minutes.</p>
+      `,
+    };
+
+    return this.transporter.sendMail(mailOptions);
+  }
+
   async sendPasswordReset(email: string, token: string) {
     const resetUrl = `${this.configService.get('FRONTEND_URL')}/reset-password?token=${token}`;
 

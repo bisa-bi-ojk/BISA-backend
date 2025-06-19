@@ -5,7 +5,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import { users, User, NewUser } from '../database/schema';
@@ -31,18 +31,32 @@ export class UsersService {
     }
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
-    const emailVerificationToken = this.generateToken();
 
-    const newUser: NewUser = {
-      fullName: createUserDto.fullName,
-      phone: createUserDto.phone,
-      email: createUserDto.email,
-      password: hashedPassword,
-      emailVerificationToken,
-    };
-
-    const [user] = await this.db.insert(users).values(newUser).returning();
-    return user;
+    if (createUserDto.role === 'admin') {
+      const emailVerificationToken = this.generateToken();
+      const newUser: NewUser = {
+        fullName: createUserDto.fullName,
+        phone: createUserDto.phone,
+        email: createUserDto.email,
+        password: hashedPassword,
+        emailVerificationToken,
+      };
+      const [user] = await this.db.insert(users).values(newUser).returning();
+      return user;
+    } else if (createUserDto.role === 'citizen') {
+      const otpCode = this.generateOtpCode();
+      const newUser: NewUser = {
+        fullName: createUserDto.fullName,
+        phone: createUserDto.phone,
+        email: createUserDto.email,
+        password: hashedPassword,
+        otpCode,
+      };
+      const [user] = await this.db.insert(users).values(newUser).returning();
+      return user;
+    } else {
+      throw new BadRequestException(`Invalid role: ${createUserDto.role}`);
+    }
   }
 
   private generateToken(): string {
@@ -50,6 +64,10 @@ export class UsersService {
       Math.random().toString(36).substring(2, 15) +
       Math.random().toString(36).substring(2, 15)
     );
+  }
+
+  private generateOtpCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -86,6 +104,30 @@ export class UsersService {
       .set({
         emailVerified: true,
         emailVerificationToken: null,
+        emailVerificationExpires: null,
+      })
+      .where(eq(users.id, user.id));
+
+    return true;
+  }
+
+  async verifyOtpCode(email: string, otpCode: string): Promise<boolean> {
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(and(eq(users.email, email), eq(users.otpCode, otpCode)))
+      .limit(1);
+
+    if (!user) {
+      return false;
+    }
+
+    await this.db
+      .update(users)
+      .set({
+        emailVerified: true,
+        otpCode: null,
+        otpExpires: null,
       })
       .where(eq(users.id, user.id));
 
