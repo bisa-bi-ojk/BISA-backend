@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { EmailService } from './email.service';
 
-// eslint-disable-next-line prettier/prettier
 @Module({
+  imports: [ConfigModule],
   providers: [EmailService],
   exports: [EmailService],
-  // eslint-disable-next-line prettier/prettier
 })
 export class EmailModule {}

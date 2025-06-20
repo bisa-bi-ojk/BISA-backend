@@ -1,59 +1,47 @@
 import {
+  BadRequestException,
   Injectable,
   UnauthorizedException,
-  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { UsersService } from '../users/users.service';
+import { User } from '../database/schema';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
-import { LoginDto } from './dto/login.dto';
+import { UserRepository } from '../users/user.repository';
+import { UsersService } from '../users/users.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { LoginDto } from './dto/login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService,
-    private emailService: EmailService,
+    private readonly usersService: UsersService,
+    private readonly userRepo: UserRepository,
+    private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   async register(createUserDto: CreateUserDto) {
     const user = await this.usersService.create(createUserDto);
-
-    if (user.emailVerificationToken) {
-      await this.emailService.sendEmailVerification(
-        user.email,
-        user.emailVerificationToken,
-      );
-    }
-
-    if (user.otpCode) {
-      await this.emailService.sendOtpCode(user.email, user.otpCode);
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...result } = user;
+    await this.sendVerification(user);
+    const { password, ...sanitized } = user;
     return {
       message:
         'User registered successfully. Please check your email for verification.',
-      user: result,
+      user: sanitized,
     };
   }
 
   async login(loginDto: LoginDto) {
-    const user = await this.usersService.findByEmail(loginDto.email);
+    const user = await this.userRepo.findByEmail(loginDto.email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
-    if (!isPasswordValid) {
+    const valid = await bcrypt.compare(loginDto.password, user.password);
+    if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -64,29 +52,40 @@ export class AuthService {
     }
 
     const payload = { email: user.email, sub: user.id };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...result } = user;
-
-    return {
-      access_token: this.jwtService.sign(payload),
-      user: result,
-    };
+    const access_token = this.jwtService.sign(payload);
+    const { password, ...sanitized } = user;
+    return { access_token, user: sanitized };
   }
 
   async verifyEmail(token: string) {
-    const isVerified = await this.usersService.verifyEmail(token);
-    if (!isVerified) {
+    const user = await this.userRepo.findByVerificationToken(token);
+    if (!user) {
       throw new BadRequestException('Invalid or expired verification token');
     }
+
+    const wasVerified = await this.usersService.verifyEmail(token);
+    if (!wasVerified) {
+      throw new BadRequestException('Invalid or expired verification token');
+    }
+
+    await this.emailService.sendEmailConfirmation(user.email);
 
     return { message: 'Email verified successfully' };
   }
 
   async verifyOtpCode(email: string, otpCode: string) {
-    const isValid = await this.usersService.verifyOtpCode(email, otpCode);
-    if (!isValid) {
+    const user = await this.userRepo.findByEmail(email);
+    if (!user) {
       throw new BadRequestException('Invalid or expired OTP code');
     }
+
+    const wasValid = await this.usersService.verifyOtpCode(email, otpCode);
+    if (!wasValid) {
+      throw new BadRequestException('Invalid or expired OTP code');
+    }
+
+    await this.emailService.sendEmailConfirmation(user.email);
+
     return { message: 'OTP verified successfully' };
   }
 
@@ -94,31 +93,38 @@ export class AuthService {
     const resetToken = await this.usersService.setPasswordResetToken(
       forgotPasswordDto.email,
     );
-
     if (resetToken) {
       await this.emailService.sendPasswordReset(
         forgotPasswordDto.email,
         resetToken,
       );
     }
-
-    // Always return success message for security
     return {
       message: 'If the email exists, a password reset link has been sent',
     };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const isReset = await this.usersService.resetPassword(
-      resetPasswordDto.token,
-      resetPasswordDto.newPassword,
-      resetPasswordDto.confirmPassword,
+    const { token, newPassword, confirmPassword } = resetPasswordDto;
+    const ok = await this.usersService.resetPassword(
+      token,
+      newPassword,
+      confirmPassword,
     );
-
-    if (!isReset) {
+    if (!ok) {
       throw new BadRequestException('Invalid or expired reset token');
     }
-
     return { message: 'Password reset successfully' };
+  }
+
+  private async sendVerification(user: User) {
+    if (user.emailVerificationToken) {
+      await this.emailService.sendEmailVerification(
+        user.email,
+        user.emailVerificationToken,
+      );
+    } else if (user.otpCode) {
+      await this.emailService.sendOtpCode(user.email, user.otpCode);
+    }
   }
 }

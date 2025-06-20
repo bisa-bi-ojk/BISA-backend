@@ -1,201 +1,140 @@
 import {
-  Injectable,
-  Inject,
-  ConflictException,
   BadRequestException,
+  ConflictException,
+  Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
-import { DATABASE_CONNECTION } from '../database/database.module';
-import { users, User, NewUser } from '../database/schema';
+import { OtpService } from '../common/services/otp.service';
+import { TokenService } from '../common/services/token.service';
+import { User } from '../database/schema';
 import { CreateUserDto } from './dto/create-user.dto';
-import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import * as schema from '../database/schema';
+import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @Inject(DATABASE_CONNECTION)
-    private db: PostgresJsDatabase<typeof schema>,
+    private readonly repo: UserRepository,
+    private readonly tokens: TokenService,
+    private readonly otps: OtpService,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    if (createUserDto.password !== createUserDto.confirmPassword) {
+  async create(dto: CreateUserDto): Promise<User> {
+    if (dto.password !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
 
-    const existingUser = await this.findByEmail(createUserDto.email);
-
-    if (existingUser && existingUser.emailVerified) {
+    const existing = await this.repo.findByEmail(dto.email);
+    if (existing && existing.emailVerified) {
       throw new ConflictException('Email already registered');
     }
 
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
+    const hashed = await bcrypt.hash(dto.password, 12);
 
-    const baseFields = {
-      fullName: createUserDto.fullName,
-      phone: createUserDto.phone,
+    return dto.role === 'admin'
+      ? this.registerAdmin(existing, dto, hashed)
+      : this.registerCitizen(existing, dto, hashed);
+  }
+
+  private async registerAdmin(
+    existing: User | null,
+    dto: CreateUserDto,
+    hashedPassword: string,
+  ): Promise<User> {
+    const token = this.tokens.generateToken();
+    const expires = this.tokens.getExpiration();
+
+    const fields = {
+      fullName: dto.fullName,
+      phone: dto.phone,
       password: hashedPassword,
-      role: createUserDto.role,
-    } as Partial<NewUser>;
+      role: dto.role,
+      emailVerificationToken: token,
+      emailVerificationExpires: expires,
+      otpCode: null,
+      otpExpires: null,
+    } as Partial<User>;
 
-    if (createUserDto.role === 'admin') {
-      const emailVerificationToken = this.generateToken();
-      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60_000);
-
-      const fields = {
-        ...baseFields,
-        emailVerificationToken,
-        emailVerificationExpires,
-        otpCode: null,
-        otpExpires: null,
-      } as Partial<NewUser>;
-
-      if (existingUser) {
-        const [user] = await this.db
-          .update(users)
-          .set(fields)
-          .where(eq(users.id, existingUser.id))
-          .returning();
-        return user;
-      }
-
-      const newUser: NewUser = {
-        ...fields,
-        email: createUserDto.email,
-      } as NewUser;
-      const [user] = await this.db.insert(users).values(newUser).returning();
-      return user;
-    } else if (createUserDto.role === 'citizen') {
-      const otpCode = this.generateOtpCode();
-      const otpExpires = new Date(Date.now() + 10 * 60_000);
-
-      const fields = {
-        ...baseFields,
-        otpCode,
-        otpExpires,
-        emailVerificationToken: null,
-        emailVerificationExpires: null,
-      } as Partial<NewUser>;
-
-      if (existingUser) {
-        const [user] = await this.db
-          .update(users)
-          .set(fields)
-          .where(eq(users.id, existingUser.id))
-          .returning();
-        return user;
-      }
-
-      const newUser: NewUser = {
-        ...fields,
-        email: createUserDto.email,
-      } as NewUser;
-      const [user] = await this.db.insert(users).values(newUser).returning();
-      return user;
-    } else {
-      throw new BadRequestException(`Invalid role: ${createUserDto.role}`);
+    if (existing) {
+      return this.repo.update(existing.id, fields);
     }
+    return this.repo.create({ email: dto.email, ...fields } as any);
   }
 
-  private generateToken(): string {
-    return (
-      Math.random().toString(36).substring(2, 15) +
-      Math.random().toString(36).substring(2, 15)
-    );
-  }
+  private async registerCitizen(
+    existing: User | null,
+    dto: CreateUserDto,
+    hashedPassword: string,
+  ): Promise<User> {
+    const code = this.otps.generateCode();
+    const expires = this.otps.getExpiration();
 
-  private generateOtpCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
+    const fields = {
+      fullName: dto.fullName,
+      phone: dto.phone,
+      password: hashedPassword,
+      role: dto.role,
+      otpCode: code,
+      otpExpires: expires,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
+    } as Partial<User>;
 
-  async findByEmail(email: string): Promise<User | null> {
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-    return user || null;
-  }
-
-  async findById(id: number): Promise<User | null> {
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
-    return user || null;
+    if (existing) {
+      return this.repo.update(existing.id, fields);
+    }
+    return this.repo.create({ email: dto.email, ...fields } as any);
   }
 
   async verifyEmail(token: string): Promise<boolean> {
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.emailVerificationToken, token))
-      .limit(1);
-
+    const user = await this.repo.findByVerificationToken(token);
     if (
       !user ||
       !user.emailVerificationExpires ||
-      user.emailVerificationExpires < new Date()
+      this.tokens.isExpired(user.emailVerificationExpires)
     ) {
       return false;
     }
 
-    await this.db
-      .update(users)
-      .set({
-        emailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpires: null,
-      })
-      .where(eq(users.id, user.id));
-
+    await this.repo.update(user.id, {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
+    });
     return true;
   }
 
-  async verifyOtpCode(email: string, otpCode: string): Promise<boolean> {
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(and(eq(users.email, email), eq(users.otpCode, otpCode)))
-      .limit(1);
-
-    if (!user || !user.otpExpires || user.otpExpires < new Date()) {
+  async verifyOtpCode(email: string, code: string): Promise<boolean> {
+    const user = await this.repo.findByEmail(email);
+    if (
+      !user ||
+      user.otpCode !== code ||
+      !user.otpExpires ||
+      this.otps.isExpired(user.otpExpires)
+    ) {
       return false;
     }
 
-    await this.db
-      .update(users)
-      .set({
-        emailVerified: true,
-        otpCode: null,
-        otpExpires: null,
-      })
-      .where(eq(users.id, user.id));
-
+    await this.repo.update(user.id, {
+      emailVerified: true,
+      otpCode: null,
+      otpExpires: null,
+    });
     return true;
   }
 
   async setPasswordResetToken(email: string): Promise<string | null> {
-    const user = await this.findByEmail(email);
-    if (!user) {
-      return null;
-    }
+    const user = await this.repo.findByEmail(email);
+    if (!user) return null;
 
-    const resetToken = this.generateToken();
-    const resetExpires = new Date(Date.now() + 3_600_000);
+    const token = this.tokens.generateToken();
+    const expires = this.tokens.getExpiration();
 
-    await this.db
-      .update(users)
-      .set({
-        passwordResetToken: resetToken,
-        passwordResetExpires: resetExpires,
-      })
-      .where(eq(users.id, user.id));
-
-    return resetToken;
+    await this.repo.update(user.id, {
+      passwordResetToken: token,
+      passwordResetExpires: expires,
+    });
+    return token;
   }
 
   async resetPassword(
@@ -206,31 +145,22 @@ export class UsersService {
     if (newPassword !== confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.passwordResetToken, token))
-      .limit(1);
 
+    const user = await this.repo.findByPasswordResetToken(token);
     if (
       !user ||
       !user.passwordResetExpires ||
-      user.passwordResetExpires < new Date()
+      this.tokens.isExpired(user.passwordResetExpires)
     ) {
       throw new NotFoundException('Invalid or expired password reset token');
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-    await this.db
-      .update(users)
-      .set({
-        password: hashedPassword,
-        passwordResetToken: null,
-        passwordResetExpires: null,
-      })
-      .where(eq(users.id, user.id));
-
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await this.repo.update(user.id, {
+      password: hashed,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+    });
     return true;
   }
 }
