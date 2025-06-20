@@ -26,38 +26,72 @@ export class UsersService {
     }
 
     const existingUser = await this.findByEmail(createUserDto.email);
-    if (existingUser) {
-      throw new ConflictException('Email already exists');
+
+    if (existingUser && existingUser.emailVerified) {
+      throw new ConflictException('Email already registered');
     }
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
 
+    const baseFields = {
+      fullName: createUserDto.fullName,
+      phone: createUserDto.phone,
+      password: hashedPassword,
+      role: createUserDto.role,
+    } as Partial<NewUser>;
+
     if (createUserDto.role === 'admin') {
       const emailVerificationToken = this.generateToken();
-      const emailVerificationExpires = new Date(Date.now() + 3600_000);
+      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60_000);
 
-      const newUser: NewUser = {
-        fullName: createUserDto.fullName,
-        phone: createUserDto.phone,
-        email: createUserDto.email,
-        password: hashedPassword,
+      const fields = {
+        ...baseFields,
         emailVerificationToken,
         emailVerificationExpires,
-      };
+        otpCode: null,
+        otpExpires: null,
+      } as Partial<NewUser>;
+
+      if (existingUser) {
+        const [user] = await this.db
+          .update(users)
+          .set(fields)
+          .where(eq(users.id, existingUser.id))
+          .returning();
+        return user;
+      }
+
+      const newUser: NewUser = {
+        ...fields,
+        email: createUserDto.email,
+      } as NewUser;
       const [user] = await this.db.insert(users).values(newUser).returning();
       return user;
     } else if (createUserDto.role === 'citizen') {
       const otpCode = this.generateOtpCode();
-      const otpExpires = new Date(Date.now() + 5 * 60_000);
+      const otpExpires = new Date(Date.now() + 10 * 60_000);
 
-      const newUser: NewUser = {
-        fullName: createUserDto.fullName,
-        phone: createUserDto.phone,
-        email: createUserDto.email,
-        password: hashedPassword,
+      const fields = {
+        ...baseFields,
         otpCode,
         otpExpires,
-      };
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+      } as Partial<NewUser>;
+
+      if (existingUser) {
+        const [user] = await this.db
+          .update(users)
+          .set(fields)
+          .where(eq(users.id, existingUser.id))
+          .returning();
+        return user;
+      }
+
+      const newUser: NewUser = {
+        ...fields,
+        email: createUserDto.email,
+      } as NewUser;
       const [user] = await this.db.insert(users).values(newUser).returning();
       return user;
     } else {
@@ -151,7 +185,7 @@ export class UsersService {
     }
 
     const resetToken = this.generateToken();
-    const resetExpires = new Date(Date.now() + 3600_000);
+    const resetExpires = new Date(Date.now() + 3_600_000);
 
     await this.db
       .update(users)
