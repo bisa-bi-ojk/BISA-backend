@@ -68,7 +68,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired verification token');
     }
 
-    await this.emailService.sendEmailConfirmation(user.email);
+    await this.emailService.sendEmailConfirmation(user.email, user.fullName);
 
     return { message: 'Email verified successfully' };
   }
@@ -84,19 +84,21 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired OTP code');
     }
 
-    await this.emailService.sendEmailConfirmation(user.email);
+    await this.emailService.sendEmailConfirmation(user.email, user.fullName);
 
     return { message: 'OTP verified successfully' };
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const user = await this.userRepo.findByEmail(forgotPasswordDto.email);
     const resetToken = await this.usersService.setPasswordResetToken(
       forgotPasswordDto.email,
     );
-    if (resetToken) {
+    if (resetToken && user) {
       await this.emailService.sendPasswordReset(
-        forgotPasswordDto.email,
+        user.email,
         resetToken,
+        user.fullName,
       );
     }
     return {
@@ -106,14 +108,12 @@ export class AuthService {
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
     const { token, newPassword, confirmPassword } = resetPasswordDto;
-    const ok = await this.usersService.resetPassword(
+    const user = await this.usersService.resetPassword(
       token,
       newPassword,
       confirmPassword,
     );
-    if (!ok) {
-      throw new BadRequestException('Invalid or expired reset token');
-    }
+    await this.emailService.sendPasswordResetSuccess(user.email, user.fullName);
     return { message: 'Password reset successfully' };
   }
 
@@ -122,9 +122,14 @@ export class AuthService {
       await this.emailService.sendEmailVerification(
         user.email,
         user.emailVerificationToken,
+        user.fullName,
       );
     } else if (user.otpCode) {
-      await this.emailService.sendOtpCode(user.email, user.otpCode);
+      await this.emailService.sendOtpCode(
+        user.email,
+        user.otpCode,
+        user.fullName,
+      );
     }
   }
 }

@@ -1,3 +1,272 @@
-<h2>One-Time Password (OTP)</h2>
-<p>Your OTP code is: <strong>{{otp}}</strong></p>
-<p>This code is valid for 10 minutes.</p>
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kode OTP Anda - BISA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8fafc;
+        }
+
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .logo {
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .tagline {
+            color: #e3f2fd;
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        .content {
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .lock-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #6f42c1 0%, #8b5cf6 100%);
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            display: table;
+            font-size: 32px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .lock-icon-inner {
+            display: table-cell;
+            vertical-align: middle;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 16px;
+        }
+
+        .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.7;
+        }
+
+        .otp-container {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 2px dashed #007bff;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .otp-label {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .otp-code {
+            font-size: 36px;
+            font-weight: bold;
+            color: #007bff;
+            letter-spacing: 8px;
+            font-family: 'Courier New', Consolas, monospace;
+            margin-bottom: 15px;
+        }
+
+        .expiry-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 25px 0;
+            font-size: 14px;
+            color: #856404;
+            text-align: center;
+        }
+
+        .clock-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        .security-notice {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .security-notice h3 {
+            color: #721c24;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .security-notice p {
+            color: #721c24;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .footer {
+            background-color: #f8fafc;
+            padding: 30px 20px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer-links {
+            margin-bottom: 20px;
+        }
+
+        .footer-links a {
+            color: #007bff;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 14px;
+        }
+
+        .footer-text {
+            font-size: 12px;
+            color: #718096;
+            line-height: 1.5;
+        }
+
+        /* Email client specific fixes */
+        img {
+            display: inline-block !important;
+            vertical-align: middle !important;
+            max-width: 24px !important;
+            max-height: 24px !important;
+        }
+
+        /* Gmail specific fixes */
+        .gmail_fix {
+            display: table !important;
+            width: 100% !important;
+        }
+
+        @media only screen and (max-width: 600px) {
+            .email-wrapper {
+                margin: 0;
+                box-shadow: none;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+
+            .title {
+                font-size: 20px;
+            }
+
+            .otp-code {
+                font-size: 28px;
+                letter-spacing: 4px;
+            }
+
+            .otp-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="email-wrapper">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">BISA</div>
+            <div class="tagline">Bantuan Inklusif &amp; Sasaran Akurat</div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div class="lock-icon">
+                <div class="lock-icon-inner">🔒</div>
+            </div>
+
+            <h1 class="title">Kode Verifikasi OTP</h1>
+
+            <p class="message">
+                Halo <strong>{{name}}</strong>,<br><br>
+                Berikut adalah kode One-Time Password (OTP) untuk verifikasi akun Anda di platform BISA:
+            </p>
+
+            <div class="otp-container">
+                <div class="otp-label">Kode OTP Anda</div>
+                <div class="otp-code">{{otp}}</div>
+                <p style="font-size: 14px; color: #718096; margin: 0;">
+                    Masukkan kode ini di halaman verifikasi
+                </p>
+            </div>
+
+            <div class="expiry-info">
+                <span class="clock-icon">⏰</span>
+                <strong>Kode ini berlaku selama 10 menit</strong>
+            </div>
+
+            <div class="security-notice">
+                <h3>🔒 Penting untuk Keamanan</h3>
+                <p>
+                    • Jangan bagikan kode ini kepada siapa pun<br>
+                    • BISA tidak akan pernah meminta kode OTP melalui telepon atau email<br>
+                    • Jika Anda tidak meminta kode ini, abaikan email ini dan segera hubungi tim dukungan kami
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-links">
+                <a href="{{supportUrl}}">Hubungi Kami</a>
+                <a href="{{helpUrl}}">Bantuan</a>
+                <a href="{{privacyUrl}}">Kebijakan Privasi</a>
+            </div>
+            <div class="footer-text">
+                © 2025 BISA - Platform AI untuk Bantuan Sosial Tepat Sasaran<br>
+                Email ini dikirim secara otomatis, mohon jangan membalas.
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

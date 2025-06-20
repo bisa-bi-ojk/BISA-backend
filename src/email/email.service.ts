@@ -39,7 +39,12 @@ export class EmailService {
   }
 
   private loadTemplate(
-    name: 'verify-email' | 'otp-code' | 'password-reset' | 'email-confirmation',
+    name:
+      | 'verify-email'
+      | 'otp-code'
+      | 'email-confirmation'
+      | 'password-reset'
+      | 'password-reset-success',
   ): string {
     const file = join(
       process.cwd(),
@@ -66,43 +71,59 @@ export class EmailService {
     }
   }
 
-  async sendEmailVerification(email: string, token: string) {
+  async sendEmailVerification(email: string, token: string, name: string) {
     let html = this.loadTemplate('verify-email');
     const url = `${this.frontendUrl}/verify-email?token=${token}`;
-    html = html.replace(/{{url}}/g, url);
+    html = html.replace(/{{url}}/g, url).replace(/{{name}}/g, name);
     return this.sendMail({
       to: email,
-      subject: 'Verify Your Email Address',
+      subject: 'Verifikasi Email Anda - BISA',
       html,
     });
   }
 
-  async sendOtpCode(email: string, otp: string) {
+  async sendOtpCode(email: string, otp: string, name: string) {
     let html = this.loadTemplate('otp-code');
-    html = html.replace(/{{otp}}/g, otp);
+    html = html.replace(/{{otp}}/g, otp).replace(/{{name}}/g, name);
     return this.sendMail({
       to: email,
-      subject: 'Your OTP Code',
+      subject: 'Kode OTP Anda - BISA',
       html,
     });
   }
 
-  async sendEmailConfirmation(email: string) {
-    const html = this.loadTemplate('email-confirmation');
+  async sendEmailConfirmation(email: string, name: string) {
+    let html = this.loadTemplate('email-confirmation');
+    html = html.replace(/{{name}}/g, name);
     return this.sendMail({
       to: email,
-      subject: 'Your Email Has Been Verified!',
+      subject: 'Email Berhasil Dikonfirmasi - BISA',
       html,
     });
   }
 
-  async sendPasswordReset(email: string, token: string) {
+  async sendPasswordReset(email: string, token: string, name: string) {
     let html = this.loadTemplate('password-reset');
     const url = `${this.frontendUrl}/reset-password?token=${token}`;
-    html = html.replace(/{{resetUrl}}/g, url);
+    html = html.replace(/{{resetUrl}}/g, url).replace(/{{name}}/g, name);
     return this.sendMail({
       to: email,
-      subject: 'Password Reset Request',
+      subject: 'Reset Password - BISA',
+      html,
+    });
+  }
+
+  async sendPasswordResetSuccess(email: string, name: string) {
+    let html = this.loadTemplate('password-reset-success');
+    const timestamp = new Date().toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      dateStyle: 'full',
+      timeStyle: 'short',
+    });
+    html = html.replace(/{{name}}/g, name).replace(/{{timestamp}}/g, timestamp);
+    return this.sendMail({
+      to: email,
+      subject: 'Password Berhasil Diubah - BISA',
       html,
     });
   }

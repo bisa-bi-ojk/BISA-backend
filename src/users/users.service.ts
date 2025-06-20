@@ -141,7 +141,7 @@ export class UsersService {
     token: string,
     newPassword: string,
     confirmPassword: string,
-  ): Promise<boolean> {
+  ): Promise<User> {
     if (newPassword !== confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
@@ -161,6 +161,6 @@ export class UsersService {
       passwordResetToken: null,
       passwordResetExpires: null,
     });
-    return true;
+    return user;
   }
 }
