@@ -97,12 +97,12 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
-
 # Bisa Backend - NestJS Authentication API
 
 ## Overview
 
 This is a complete backend application built with **NestJS** that provides authentication features including:
+
 - User registration with email verification
 - User login/logout
 - Password reset and forgot password functionality
@@ -123,15 +123,15 @@ This is a complete backend application built with **NestJS** that provides authe
 
 ### Authentication Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/auth/register` | Register a new user | No |
-| POST | `/auth/login` | Login user | No |
-| GET | `/auth/verify-email` | Verify email with token | No |
-| POST | `/auth/forgot-password` | Request password reset | No |
-| POST | `/auth/reset-password` | Reset password with token | No |
-| GET | `/auth/profile` | Get user profile | Yes |
-| POST | `/auth/logout` | Logout user | Yes |
+| Method | Endpoint                | Description               | Auth Required |
+| ------ | ----------------------- | ------------------------- | ------------- |
+| POST   | `/auth/register`        | Register a new user       | No            |
+| POST   | `/auth/login`           | Login user                | No            |
+| GET    | `/auth/verify-email`    | Verify email with token   | No            |
+| POST   | `/auth/forgot-password` | Request password reset    | No            |
+| POST   | `/auth/reset-password`  | Reset password with token | No            |
+| GET    | `/auth/profile`         | Get user profile          | Yes           |
+| POST   | `/auth/logout`          | Logout user               | Yes           |
 
 ## Setup Instructions
 
@@ -148,7 +148,7 @@ The `.env` file is already configured with the following variables:
 
 ```env
 # Database Configuration
-DATABASE_URL=postgresql://bisa_owner:npg_hQnL17yJdgCP@ep-quiet-glade-a1n283kt-pooler.ap-southeast-1.aws.neon.tech/bisa?sslmode=require
+DATABASE_URL= database_url
 
 # JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-here
@@ -217,6 +217,7 @@ curl -X POST http://localhost:3001/auth/register \
 ```
 
 **Response:**
+
 ```json
 {
   "message": "User registered successfully. Please check your email for verification.",
@@ -251,6 +252,7 @@ curl -X POST http://localhost:3001/auth/login \
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -323,9 +325,10 @@ CREATE TABLE users (
 
 ## Frontend Integration
 
-The API is configured to work with a frontend running on `http://localhost:3000`. 
+The API is configured to work with a frontend running on `http://localhost:3000`.
 
 **Email Links Format:**
+
 - Email verification: `http://localhost:3000/verify-email?token={token}`
 - Password reset: `http://localhost:3000/reset-password?token={token}`
 
@@ -342,6 +345,7 @@ The API returns standardized error responses:
 ```
 
 Common HTTP status codes:
+
 - `200`: Success
 - `400`: Bad Request (validation errors)
 - `401`: Unauthorized (invalid credentials, unverified email)
@@ -407,6 +411,7 @@ src/
 ## Support
 
 For any issues or questions, please check the logs and ensure:
+
 1. Database connection is working
 2. Email configuration is correct
 3. All environment variables are set
@@ -415,6 +420,7 @@ For any issues or questions, please check the logs and ensure:
 ## Production Deployment
 
 For production deployment:
+
 1. Set `NODE_ENV=production`
 2. Use a strong `JWT_SECRET`
 3. Configure proper CORS origins
@@ -422,12 +428,12 @@ For production deployment:
 5. Use production-grade database credentials
 6. Configure proper email service (SendGrid, AWS SES, etc.)
 
-
 # 🚀 Complete NestJS Authentication Backend Tutorial
 
 ## 🎯 What We've Built
 
 A **complete authentication backend** with:
+
 - ✅ User Registration with Email Verification
 - ✅ Login/Logout with JWT Authentication
 - ✅ Password Reset & Forgot Password
@@ -444,6 +450,7 @@ A **complete authentication backend** with:
 ## 🛠️ Quick Start
 
 ### 1. Project Setup (Already Done)
+
 ```bash
 # Navigate to project
 cd "c:\Users\Anthony Feriyanto\Documents\PBP\bisa\bisa-backend"
@@ -456,6 +463,7 @@ npm run start:dev
 ```
 
 ### 2. Database Setup (Already Done)
+
 - ✅ PostgreSQL database on Neon cloud
 - ✅ Database schema created and migrated
 - ✅ Connection string configured in `.env`
@@ -488,25 +496,27 @@ FRONTEND_URL=http://localhost:3000
 
 ## 🌐 API Endpoints
 
-| Method | Endpoint | Description | Status |
-|--------|----------|-------------|--------|
-| POST | `/auth/register` | Register new user | ✅ Working |
-| POST | `/auth/login` | User login | ✅ Working |
-| GET | `/auth/verify-email?token=...` | Verify email | ✅ Working |
-| POST | `/auth/forgot-password` | Request password reset | ✅ Working |
-| POST | `/auth/reset-password` | Reset password | ✅ Working |
-| GET | `/auth/profile` | Get user profile (protected) | ✅ Working |
-| POST | `/auth/logout` | Logout user | ✅ Working |
+| Method | Endpoint                       | Description                  | Status     |
+| ------ | ------------------------------ | ---------------------------- | ---------- |
+| POST   | `/auth/register`               | Register new user            | ✅ Working |
+| POST   | `/auth/login`                  | User login                   | ✅ Working |
+| GET    | `/auth/verify-email?token=...` | Verify email                 | ✅ Working |
+| POST   | `/auth/forgot-password`        | Request password reset       | ✅ Working |
+| POST   | `/auth/reset-password`         | Reset password               | ✅ Working |
+| GET    | `/auth/profile`                | Get user profile (protected) | ✅ Working |
+| POST   | `/auth/logout`                 | Logout user                  | ✅ Working |
 
 ## 🧪 Testing the API
 
 ### Option 1: PowerShell Script
+
 ```powershell
 # Run the test script
 .\test-api.ps1
 ```
 
 ### Option 2: Manual Testing
+
 ```powershell
 # Register a user
 $body = '{"email": "test@example.com", "password": "password123", "firstName": "Test", "lastName": "User"}'
@@ -539,21 +549,25 @@ src/
 ## 🔑 Key Features Implemented
 
 ### 1. User Registration Flow
+
 ```
 User registers → Email sent → User clicks link → Email verified → Can login
 ```
 
-### 2. Authentication Flow  
+### 2. Authentication Flow
+
 ```
 Login → JWT token issued → Use token for protected routes
 ```
 
 ### 3. Password Reset Flow
+
 ```
 Forgot password → Email sent → Click link → Reset password → Can login
 ```
 
 ### 4. Security Features
+
 - ✅ Password hashing with bcryptjs
 - ✅ JWT tokens for stateless authentication
 - ✅ Email verification required
@@ -611,6 +625,7 @@ Users Table:
 4. **JWT errors**: Set proper `JWT_SECRET`
 
 ### Logs Location:
+
 Check terminal output for real-time logs and error messages.
 
 ## 📚 Additional Resources
@@ -621,4 +636,3 @@ Check terminal output for real-time logs and error messages.
 - [Gmail App Passwords](https://support.google.com/accounts/answer/185833)
 
 ---
-
